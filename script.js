@@ -20,12 +20,13 @@ const adminToggleBtn = document.getElementById('adminToggleBtn');
 const adminModal = document.getElementById('adminModal');
 const closeAdminModal = document.getElementById('closeAdminModal');
 const adminVideoForm = document.getElementById('adminVideoForm');
-const videoFileInput = document.getElementById('videoFile');
+const videoUrlInput = document.getElementById('videoUrl');
 const videoIconInput = document.getElementById('videoIcon');
 const filmModal = document.getElementById('filmModal');
 const filmTitle = document.getElementById('filmTitle');
 const filmDescription = document.getElementById('filmDescription');
 const filmPlayer = document.getElementById('filmPlayer');
+const filmWatchLink = document.getElementById('filmWatchLink');
 const closeFilmModal = document.getElementById('closeFilmModal');
 const deleteConfirmModal = document.getElementById('deleteConfirmModal');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
@@ -212,16 +213,13 @@ function renderVideos() {
 function openFilmDetails(film) {
   filmTitle.textContent = film.title;
   filmDescription.innerHTML = highlightMatches(film.description, searchInput.value.trim(), true);
-  filmPlayer.src = film.videoDataUrl;
-  filmPlayer.muted = false;
+  filmWatchLink.href = film.videoUrl || film.videoDataUrl || '#';
   filmModal.classList.remove('hidden');
 }
 
 function closeFilmDetails() {
   filmModal.classList.add('hidden');
-  filmPlayer.pause();
-  filmPlayer.removeAttribute('src');
-  filmPlayer.load();
+  filmWatchLink.href = '#';
 }
 
 let filmToDeleteId = null;
@@ -258,7 +256,7 @@ function openAdminModal() {
 function closeAdminModalWindow() {
   adminModal.classList.add('hidden');
   adminVideoForm.reset();
-  if (videoFileInput) videoFileInput.value = '';
+  if (videoUrlInput) videoUrlInput.value = '';
   if (videoIconInput) videoIconInput.value = '';
 }
 
@@ -364,16 +362,18 @@ adminVideoForm.addEventListener('submit', async (event) => {
 
   const title = document.getElementById('videoTitle').value.trim();
   const description = document.getElementById('videoDescription').value.trim();
-  const videoFile = videoFileInput.files[0];
+  const videoUrl = videoUrlInput.value.trim();
   const iconFile = videoIconInput.files[0];
 
-  if (!title || !description || !videoFile) {
-    showMessage('Название, описание и видео-файл обязательны.', 'error');
+  if (!title || !description || !videoUrl) {
+    showMessage('Название, описание и ссылка на фильм обязательны.', 'error');
     return;
   }
 
-  if (!videoFile.type.startsWith('video/')) {
-    showMessage('Можно загружать только видеофайлы.', 'error');
+  try {
+    new URL(videoUrl);
+  } catch (error) {
+    showMessage('Введите корректную ссылку на фильм.', 'error');
     return;
   }
 
@@ -383,16 +383,13 @@ adminVideoForm.addEventListener('submit', async (event) => {
   }
 
   try {
-    const [videoDataUrl, iconDataUrl] = await Promise.all([
-      readFileAsDataURL(videoFile),
-      readFileAsDataURL(iconFile)
-    ]);
+    const iconDataUrl = await readFileAsDataURL(iconFile);
 
     videos.unshift({
       id: Date.now(),
       title,
       description,
-      videoDataUrl,
+      videoUrl,
       iconDataUrl,
       addedBy: currentUser.nickname
     });
