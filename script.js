@@ -37,24 +37,14 @@ const deleteConfirmModal = document.getElementById('deleteConfirmModal');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users)) || [];
 let videos = [];
 let currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.currentUser)) || null;
-
-if (!localStorage.getItem(STORAGE_KEYS.users)) {
-  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
-}
-
 
 function showMessage(text, type = 'info') {
   authMessage.textContent = text;
   authMessage.className = 'message';
   if (type === 'error') authMessage.classList.add('error');
   if (type === 'success') authMessage.classList.add('success');
-}
-
-function saveUsers() {
-  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
 }
 
 
@@ -282,10 +272,13 @@ function closeAdminModalWindow() {
   if (videoIconInput) videoIconInput.value = '';
 }
 
-registerForm.addEventListener('submit', (event) => {
+registerForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
-  const nickname = normalizeNickname(document.getElementById('registerNickname').value);
+  const nickname = normalizeNickname(
+    document.getElementById('registerNickname').value
+  );
+
   const password = document.getElementById('registerPassword').value;
 
   if (!nickname || !password) {
@@ -293,43 +286,68 @@ registerForm.addEventListener('submit', (event) => {
     return;
   }
 
-  const duplicate = users.some(
-    (user) => user.nickname.toLowerCase() === nickname.toLowerCase()
-  );
+  const { data, error } = await db.rpc('register_user', {
+    p_nickname: nickname,
+    p_password: password
+  });
 
-  if (duplicate) {
-    showMessage('Такой никнейм уже занят. Выберите другой.', 'error');
+  if (error) {
+    console.error('Ошибка регистрации:', error);
+    showMessage('Не удалось зарегистрироваться.', 'error');
     return;
   }
 
-  users.push({ nickname, password });
-  saveUsers();
+  if (!data.ok) {
+    showMessage(data.message || 'Не удалось зарегистрироваться.', 'error');
+    return;
+  }
 
   registerForm.reset();
-  showMessage('Регистрация успешно выполнена. Теперь можно войти в систему.', 'success');
+
+  showMessage(
+    'Регистрация успешно выполнена. Теперь можно войти в систему.',
+    'success'
+  );
 });
 
-loginForm.addEventListener('submit', (event) => {
+loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
-  const nickname = normalizeNickname(document.getElementById('loginNickname').value);
-  const password = document.getElementById('loginPassword').value;
-
-  const foundUser = users.find(
-    (user) =>
-      user.nickname.toLowerCase() === nickname.toLowerCase() &&
-      user.password === password
+  const nickname = normalizeNickname(
+    document.getElementById('loginNickname').value
   );
 
-  if (!foundUser) {
-    showMessage('Неверный никнейм или пароль.', 'error');
+  const password = document.getElementById('loginPassword').value;
+
+  if (!nickname || !password) {
+    showMessage('Введите никнейм и пароль.', 'error');
     return;
   }
 
-  currentUser = { nickname: foundUser.nickname };
+  const { data, error } = await db.rpc('login_user', {
+    p_nickname: nickname,
+    p_password: password
+  });
+
+  if (error) {
+    console.error('Ошибка входа:', error);
+    showMessage('Не удалось выполнить вход.', 'error');
+    return;
+  }
+
+  if (!data.ok) {
+    showMessage(data.message || 'Неверный никнейм или пароль.', 'error');
+    return;
+  }
+
+  currentUser = {
+    nickname: data.nickname
+  };
+
   saveCurrentUser();
   updateAuthState();
   renderVideos();
+
   loginForm.reset();
   showMessage('', 'info');
 });
