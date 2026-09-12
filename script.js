@@ -1,3 +1,8 @@
+const SUPABASE_URL = "https://cpngyotbjpdmiocoutla.supabase.co/";
+const SUPABASE_KEY = "sb_publishable_41RYlW2KJXoxCmtVCtO0xQ_CsWWlhPN";
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const STORAGE_KEYS = {
   users: 'videoHubUsers',
   videos: 'videoHubVideos',
@@ -33,16 +38,13 @@ const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
 let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users)) || [];
-let videos = JSON.parse(localStorage.getItem(STORAGE_KEYS.videos)) || [];
+let videos = [];
 let currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.currentUser)) || null;
 
 if (!localStorage.getItem(STORAGE_KEYS.users)) {
   localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
 }
 
-if (!localStorage.getItem(STORAGE_KEYS.videos)) {
-  localStorage.setItem(STORAGE_KEYS.videos, JSON.stringify(videos));
-}
 
 function showMessage(text, type = 'info') {
   authMessage.textContent = text;
@@ -55,12 +57,32 @@ function saveUsers() {
   localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
 }
 
-function saveVideos() {
-  localStorage.setItem(STORAGE_KEYS.videos, JSON.stringify(videos));
-}
 
 function saveCurrentUser() {
   localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(currentUser));
+}
+
+async function loadVideos() {
+  const { data, error } = await db
+    .from('movies')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Ошибка загрузки фильмов:', error);
+    return;
+  }
+
+  videos = data.map((movie) => ({
+    id: movie.id,
+    title: movie.title || '',
+    description: movie.description || '',
+    videoUrl: movie.url || '',
+    iconDataUrl: movie.icon_data_url || '',
+    addedBy: movie.added_by || 'Неизвестно'
+  }));
+
+  renderVideos();
 }
 
 function normalizeNickname(value) {
@@ -325,12 +347,21 @@ adminToggleBtn.addEventListener('click', openAdminModal);
 closeAdminModal.addEventListener('click', closeAdminModalWindow);
 closeFilmModal.addEventListener('click', closeFilmDetails);
 cancelDeleteBtn.addEventListener('click', closeDeleteConfirm);
-confirmDeleteBtn.addEventListener('click', () => {
+confirmDeleteBtn.addEventListener('click', async () => {
   if (filmToDeleteId === null) return;
 
-  videos = videos.filter((item) => item.id !== filmToDeleteId);
-  saveVideos();
-  renderVideos();
+  const { error } = await db
+    .from('movies')
+    .delete()
+    .eq('id', filmToDeleteId);
+
+  if (error) {
+    console.error('Ошибка удаления:', error);
+    showMessage('Не удалось удалить фильм.', 'error');
+    return;
+  }
+
+  await loadVideos();
   closeDeleteConfirm();
   showMessage('Фильм удалён.', 'success');
 });
@@ -385,23 +416,32 @@ adminVideoForm.addEventListener('submit', async (event) => {
   try {
     const iconDataUrl = await readFileAsDataURL(iconFile);
 
-    videos.unshift({
-      id: Date.now(),
-      title,
-      description,
-      videoUrl,
-      iconDataUrl,
-      addedBy: currentUser.nickname
-    });
+const { error } = await db
+  .from('movies')
+  .insert([
+    {
+      title: title,
+      description: description,
+      url: videoUrl,
+      icon_data_url: iconDataUrl,
+      added_by: currentUser.nickname
+    }
+  ]);
 
-    saveVideos();
-    renderVideos();
-    closeAdminModalWindow();
-    showMessage('Видео успешно добавлено в общий список.', 'success');
+if (error) {
+  console.error('Ошибка Supabase:', error);
+  showMessage('Не удалось добавить фильм.', 'error');
+  return;
+}
+
+await loadVideos();
+
+closeAdminModalWindow();
+showMessage('Видео успешно добавлено в общий список.', 'success');
   } catch (error) {
     showMessage('Не удалось загрузить файлы. Попробуйте ещё раз.', 'error');
   }
 });
 
 updateAuthState();
-renderVideos();
+loadVideos();
