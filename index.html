@@ -28,7 +28,7 @@
             <form id="registerForm" class="auth-form" action="#" method="post" onsubmit="return false;"></form>
               <label>Никнейм<input type="text" id="registerNickname" name="nickname" placeholder="Введите никнейм" required /></label>
               <label>Пароль<input type="password" id="registerPassword" name="password" placeholder="Введите пароль" required /></label>
-              <button type="submit" class="primary-btn">Создать аккаунт</button>
+             <button type="button" class="primary-btn" onclick="tvRegister()">Создать аккаунт</button> 
             </form>
           </div>
           <div class="auth-card">
@@ -36,7 +36,7 @@
            <form id="loginForm" class="auth-form" action="#" method="post" onsubmit="return false;"></form>
               <label>Никнейм<input type="text" id="loginNickname" name="nickname" placeholder="Введите никнейм" required /></label>
               <label>Пароль<input type="password" id="loginPassword" name="password" placeholder="Введите пароль" required /></label>
-              <button type="submit" class="primary-btn">Войти</button>
+              <button type="button" class="primary-btn" onclick="tvLogin()">Войти</button>
             </form>
             <p id="authMessage" class="message" aria-live="polite"></p>
           </div>
@@ -90,12 +90,176 @@
         </div>
       </div>
     </div>
-   
-    <script src="tv-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+    
+  
+<script>
+var SUPABASE_URL_TV = 'https://cpngyotbjpdmiocoutla.supabase.co';
+var SUPABASE_KEY_TV = 'sb_publishable_41RYlW2KJXoxCmtVCtO0xQ_CsWWlhPN';
 
-    <script>
-document.getElementById('authMessage').innerHTML = 'JS НА ТЕЛЕВИЗОРЕ РАБОТАЕТ';
+function tvMessage(text) {
+  var message = document.getElementById('authMessage');
+
+  if (message) {
+    message.innerHTML = text;
+  }
+}
+
+function tvRequest(functionName, nickname, password, callback) {
+  tvMessage('Соединение с сервером...');
+
+  var xhr = new XMLHttpRequest();
+
+  xhr.open(
+    'POST',
+    SUPABASE_URL_TV + '/rest/v1/rpc/' + functionName,
+    true
+  );
+
+  xhr.setRequestHeader('apikey', SUPABASE_KEY_TV);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_KEY_TV);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState != 4) {
+      return;
+    }
+
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        callback(null, data);
+      } catch (e) {
+        callback('Телевизор не смог прочитать ответ сервера.', null);
+      }
+
+      return;
+    }
+
+    callback(
+      'Ошибка соединения. Код: ' + xhr.status,
+      null
+    );
+  };
+
+  xhr.onerror = function() {
+    callback('Не удалось соединиться с Supabase.', null);
+  };
+
+  xhr.send(JSON.stringify({
+    p_nickname: nickname,
+    p_password: password
+  }));
+}
+
+function tvRegister() {
+  var nicknameInput = document.getElementById('registerNickname');
+  var passwordInput = document.getElementById('registerPassword');
+
+  var nickname = nicknameInput.value;
+  var password = passwordInput.value;
+
+  if (!nickname || !password) {
+    tvMessage('Введите никнейм и пароль.');
+    return;
+  }
+
+  tvMessage('Регистрация...');
+
+  tvRequest(
+    'register_user',
+    nickname,
+    password,
+    function(error, data) {
+      if (error) {
+        tvMessage(error);
+        return;
+      }
+
+      if (!data || !data.ok) {
+        if (data && data.message) {
+          tvMessage(data.message);
+        } else {
+          tvMessage('Не удалось зарегистрироваться.');
+        }
+
+        return;
+      }
+
+      nicknameInput.value = '';
+      passwordInput.value = '';
+
+      tvMessage('Аккаунт создан. Теперь войдите.');
+    }
+  );
+}
+
+function tvLogin() {
+  var nicknameInput = document.getElementById('loginNickname');
+  var passwordInput = document.getElementById('loginPassword');
+
+  var nickname = nicknameInput.value;
+  var password = passwordInput.value;
+
+  if (!nickname || !password) {
+    tvMessage('Введите никнейм и пароль.');
+    return;
+  }
+
+  tvMessage('Вход...');
+
+  tvRequest(
+    'login_user',
+    nickname,
+    password,
+    function(error, data) {
+      if (error) {
+        tvMessage(error);
+        return;
+      }
+
+      if (!data || !data.ok) {
+        if (data && data.message) {
+          tvMessage(data.message);
+        } else {
+          tvMessage('Неверный никнейм или пароль.');
+        }
+
+        return;
+      }
+
+      try {
+        localStorage.setItem(
+          'videoHubCurrentUser',
+          JSON.stringify({
+            nickname: data.nickname
+          })
+        );
+      } catch (e) {
+      }
+
+      document.getElementById('authSection').className =
+        'auth-section hidden';
+
+      document.getElementById('appSection').className =
+        'app-section';
+
+      document.getElementById('userBlock').className =
+        'user-block';
+
+      document.getElementById('currentUserLabel').innerHTML =
+        'Вы вошли как: ' + data.nickname;
+
+      tvMessage('');
+    }
+  );
+}
 </script>
+
+</body>
+</html>
+
     
   </body>
 </html>
