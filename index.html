@@ -195,6 +195,103 @@ function tvRegister() {
   );
 }
 
+function tvLoadVideos() {
+  var xhr = new XMLHttpRequest();
+
+  xhr.open(
+    'GET',
+    SUPABASE_URL_TV + '/rest/v1/movies?select=*&order=created_at.desc',
+    true
+  );
+
+  xhr.setRequestHeader('apikey', SUPABASE_KEY_TV);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_KEY_TV);
+
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState != 4) {
+      return;
+    }
+
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        var movies = JSON.parse(xhr.responseText);
+        tvRenderVideos(movies);
+      } catch (e) {
+        tvMessage('Не удалось прочитать список фильмов.');
+      }
+
+      return;
+    }
+
+    tvMessage('Не удалось загрузить фильмы. Код: ' + xhr.status);
+  };
+
+  xhr.onerror = function() {
+    tvMessage('Ошибка соединения при загрузке фильмов.');
+  };
+
+  xhr.send();
+}
+
+function tvRenderVideos(movies) {
+  var videosList = document.getElementById('videosList');
+
+  if (!videosList) {
+    return;
+  }
+
+  if (!movies || movies.length === 0) {
+    videosList.innerHTML =
+      '<div class="empty-state">Фильмов пока нет.</div>';
+    return;
+  }
+
+  var html = '';
+
+  for (var i = 0; i < movies.length; i++) {
+    var movie = movies[i];
+
+    var title = movie.title || '';
+    var description = movie.description || '';
+    var icon = movie.icon_data_url || '';
+    var addedBy = movie.added_by || 'Неизвестно';
+    var url = movie.url || '#';
+
+    var iconHtml = '';
+
+    if (icon) {
+      iconHtml =
+        '<img class="video-icon" src="' +
+        icon +
+        '" alt="Иконка фильма">';
+    } else {
+      iconHtml =
+        '<div class="video-icon">FILM</div>';
+    }
+
+    html +=
+      '<article class="video-card">' +
+        '<div class="video-media">' +
+          iconHtml +
+        '</div>' +
+        '<div class="video-info">' +
+          '<h3>' + title + '</h3>' +
+          '<p class="video-description-text">' +
+            description +
+          '</p>' +
+          '<a href="' + url + '" target="_blank" class="open-film-btn">' +
+            'Смотреть' +
+          '</a>' +
+          '<span class="video-meta">' +
+            'Добавил: ' + addedBy +
+          '</span>' +
+        '</div>' +
+      '</article>';
+  }
+
+  videosList.innerHTML = html;
+}
+
 function tvLogin() {
   var nicknameInput = document.getElementById('loginNickname');
   var passwordInput = document.getElementById('loginPassword');
@@ -208,6 +305,8 @@ function tvLogin() {
   }
 
   tvMessage('Вход...');
+
+  tvLoadVideos();
 
   tvRequest(
     'login_user',
@@ -249,9 +348,11 @@ function tvLogin() {
         'user-block';
 
       document.getElementById('currentUserLabel').innerHTML =
-        'Вы вошли как: ' + data.nickname;
+  'Вы вошли как: ' + data.nickname;
 
-      tvMessage('');
+tvMessage('');
+
+tvLoadVideos();
     }
   );
 }
