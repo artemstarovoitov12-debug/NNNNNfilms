@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NNNNN</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <div class="brand-badge">N</div>
+        <div>
+          <p class="brand-tag">Фильмы</p>
+          <h1>NNNNN</h1>
+        </div>
+      </div>
+      <div id="userBlock" class="user-block hidden">
+        <span id="currentUserLabel"></span>
+        <button id="logoutBtn" class="secondary-btn" type="button" onclick="tvLogout()">Выйти</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="authSection" class="auth-section">
+        <div class="auth-card">
+          <h2>Регистрация</h2>
+          <form id="registerForm" class="auth-form" action="#" method="post" onsubmit="return false;">
+            <label>Никнейм
+              <input type="text" id="registerNickname" name="nickname" placeholder="Введите никнейм" required />
+            </label>
+            <label>Пароль
+              <input type="password" id="registerPassword" name="password" placeholder="Введите пароль" required />
+            </label>
+            <button type="button" class="primary-btn" onclick="tvRegister()">Создать аккаунт</button>
+          </form>
+        </div>
+
+        <div class="auth-card">
+          <h2>Вход</h2>
+          <form id="loginForm" class="auth-form" action="#" method="post" onsubmit="return false;">
+            <label>Никнейм
+              <input type="text" id="loginNickname" name="nickname" placeholder="Введите никнейм" required />
+            </label>
+            <label>Пароль
+              <input type="password" id="loginPassword" name="password" placeholder="Введите пароль" required />
+            </label>
+            <button type="button" class="primary-btn" onclick="tvLogin()">Войти</button>
+          </form>
+          <p id="authMessage" class="message" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section id="appSection" class="app-section hidden">
+        <div class="toolbar">
+          <div class="search-box">
+            <label for="searchInput">Поиск</label>
+            <input id="searchInput" type="text" placeholder="Введите название" />
+          </div>
+          <button id="adminToggleBtn" class="admin-btn hidden" type="button" onclick="tvOpenAdmin()">Открыть админ-панель</button>
+        </div>
+        <div id="videosList" class="videos-grid" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="adminModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="adminTitle">Панель администратора</h3>
+        <button id="closeAdminModal" class="icon-btn" type="button" aria-label="Закрыть" onclick="tvCloseAdmin()">×</button>
+      </div>
+      <form id="adminVideoForm" class="admin-form">
+        <label>Название<input type="text" id="videoTitle" name="title" placeholder="Введите название" required /></label>
+        <label>Описание фильма<textarea id="videoDescription" name="description" rows="4" placeholder="Напишите короткое описание" required></textarea></label>
+        <label>Ссылка на фильм<input type="url" id="videoUrl" placeholder="https://example.com/film" required /></label>
+        <label>Иконка фильма<input type="file" id="videoIcon" accept="image/*" /></label>
+        <button type="submit" class="primary-btn">Добавить фильм</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="filmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="filmTitle">
+    <div class="film-modal-content">
+      <div class="modal-header">
+        <button id="closeFilmModal" class="icon-btn" type="button" aria-label="Закрыть" onclick="tvCloseFilm()">×</button>
+      </div>
+      <div class="film-viewer">
+        <div class="film-player-wrap">
+          <iframe
+            id="filmEmbed"
+            class="film-embed"
+            src="about:blank"
+            title="Плеер фильма"
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+            allowfullscreen
+            referrerpolicy="strict-origin-when-cross-origin"
+          ></iframe>
+          <a id="filmWatchLink" class="film-watch-link" href="#" target="_blank" rel="noopener noreferrer">Смотреть на другом сайте</a>
+          <p class="embed-hint">Если сайт запрещает встраивание, нажмите кнопку выше.</p>
+        </div>
+        <h3 id="filmTitle" class="film-title">Название фильма</h3>
+        <p id="filmDescription" class="film-description"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="deleteConfirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+    <div class="confirm-modal-content">
+      <h3 id="deleteConfirmTitle">Вы точно хотите удалить?</h3>
+      <div class="confirm-actions">
+        <button id="confirmDeleteBtn" class="confirm-btn delete-btn" type="button">Да</button>
+        <button id="cancelDeleteBtn" class="confirm-btn cancel-btn" type="button">Нет</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Современный код для компьютеров/телефонов. На старом ТВ он может не выполниться,
+       поэтому ниже есть совместимый fallback без современного синтаксиса. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js"></script>
+
+  <script>
+  var SUPABASE_URL_TV = 'https://cpngyotbjpdmiocoutla.supabase.co';
+  var SUPABASE_KEY_TV = 'sb_publishable_41RYlW2KJXoxCmtVCtO0xQ_CsWWlhPN';
+  var TV_ADMIN_NAMES = ['admin', 'admin1', 'admin2', 'admin3', 'admin4', 'admin5'];
+
+  function tvMessage(text) {
+    var message = document.getElementById('authMessage');
+    if (message) message.innerHTML = text || '';
+  }
+
+  function tvIsAdmin(nickname) {
+    return TV_ADMIN_NAMES.indexOf(String(nickname || '').toLowerCase()) !== -1;
+  }
+
+  function tvRequest(functionName, nickname, password, callback) {
+    tvMessage('Соединение с сервером...');
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL_TV + '/rest/v1/rpc/' + functionName, true);
+    xhr.setRequestHeader('apikey', SUPABASE_KEY_TV);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_KEY_TV);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState != 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          callback(null, JSON.parse(xhr.responseText));
+        } catch (e) {
+          callback('Телевизор не смог прочитать ответ сервера.', null);
+        }
+        return;
+      }
+      callback('Ошибка соединения. Код: ' + xhr.status, null);
+    };
+
+    xhr.onerror = function() {
+      callback('Не удалось соединиться с Supabase.', null);
+    };
+
+    xhr.send(JSON.stringify({
+      p_nickname: nickname,
+      p_password: password
+    }));
+  }
+
+  function tvRegister() {
+    var nicknameInput = document.getElementById('registerNickname');
+    var passwordInput = document.getElementById('registerPassword');
+    var nickname = nicknameInput ? nicknameInput.value : '';
+    var password = passwordInput ? passwordInput.value : '';
+
+    if (!nickname || !password) {
+      tvMessage('Введите никнейм и пароль.');
+      return;
+    }
+
+    tvMessage('Регистрация...');
+    tvRequest('register_user', nickname, password, function(error, data) {
+      if (error) {
+        tvMessage(error);
+        return;
+      }
+      if (!data || !data.ok) {
+        tvMessage(data && data.message ? data.message : 'Не удалось зарегистрироваться.');
+        return;
+      }
+      nicknameInput.value = '';
+      passwordInput.value = '';
+      tvMessage('Аккаунт создан. Теперь войдите.');
+    });
+  }
+
+  function tvLoadVideos() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', SUPABASE_URL_TV + '/rest/v1/movies?select=*&order=created_at.desc', true);
+    xhr.setRequestHeader('apikey', SUPABASE_KEY_TV);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_KEY_TV);
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState != 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          tvRenderVideos(JSON.parse(xhr.responseText));
+        } catch (e) {
+          tvMessage('Не удалось прочитать список фильмов.');
+        }
+        return;
+      }
+      tvMessage('Не удалось загрузить фильмы. Код: ' + xhr.status);
+    };
+
+    xhr.onerror = function() {
+      tvMessage('Ошибка соединения при загрузке фильмов.');
+    };
+    xhr.send();
+  }
+
+  function tvEscape(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function tvOpenFilm(url, title, description) {
+    var modal = document.getElementById('filmModal');
+    var embed = document.getElementById('filmEmbed');
+    var watch = document.getElementById('filmWatchLink');
+    var titleEl = document.getElementById('filmTitle');
+    var descriptionEl = document.getElementById('filmDescription');
+
+    if (embed) embed.src = url || 'about:blank';
+    if (watch) watch.href = url || '#';
+    if (titleEl) titleEl.innerHTML = tvEscape(title || '');
+    if (descriptionEl) descriptionEl.innerHTML = tvEscape(description || '');
+    if (modal) modal.className = 'modal';
+  }
+
+  function tvCloseFilm() {
+    var modal = document.getElementById('filmModal');
+    var embed = document.getElementById('filmEmbed');
+    var watch = document.getElementById('filmWatchLink');
+    if (embed) embed.src = 'about:blank';
+    if (watch) watch.href = '#';
+    if (modal) modal.className = 'modal hidden';
+  }
+
+  function tvRenderVideos(movies) {
+    var videosListEl = document.getElementById('videosList');
+    if (!videosListEl) return;
+
+    if (!movies || movies.length === 0) {
+      videosListEl.innerHTML = '<div class="empty-state">Фильмов пока нет.</div>';
+      return;
+    }
+
+    var html = '';
+    var i;
+    for (i = 0; i < movies.length; i++) {
+      var movie = movies[i] || {};
+      var title = tvEscape(movie.title || '');
+      var description = tvEscape(movie.description || '');
+      var icon = movie.icon_data_url || '';
+      var addedBy = tvEscape(movie.added_by || 'Неизвестно');
+      var url = movie.url || '#';
+      var iconHtml;
+
+      if (icon) {
+        iconHtml = '<img class="video-icon" src="' + icon + '" alt="Иконка фильма">';
+      } else {
+        iconHtml = '<div class="video-icon" style="display:grid;place-items:center;">FILM</div>';
+      }
+
+      html += '<article class="video-card">' +
+        '<div class="video-media">' + iconHtml + '</div>' +
+        '<div class="video-info">' +
+        '<h3>' + title + '</h3>' +
+        '<p class="video-description-text">' + description + '</p>' +
+        '<button type="button" class="open-film-btn" onclick="tvOpenFilm(decodeURIComponent(\'' + encodeURIComponent(url) + '\'), decodeURIComponent(\'' + encodeURIComponent(movie.title || '') + '\'), decodeURIComponent(\'' + encodeURIComponent(movie.description || '') + '\'))">Смотреть</button>' +
+        '<span class="video-meta">Добавил: ' + addedBy + '</span>' +
+        '</div></article>';
+    }
+
+    videosListEl.innerHTML = html;
+  }
+
+  function tvLogin() {
+    var nicknameInput = document.getElementById('loginNickname');
+    var passwordInput = document.getElementById('loginPassword');
+    var nickname = nicknameInput ? nicknameInput.value : '';
+    var password = passwordInput ? passwordInput.value : '';
+
+    if (!nickname || !password) {
+      tvMessage('Введите никнейм и пароль.');
+      return;
+    }
+
+    tvMessage('Вход...');
+    tvRequest('login_user', nickname, password, function(error, data) {
+      if (error) {
+        tvMessage(error);
+        return;
+      }
+      if (!data || !data.ok) {
+        tvMessage(data && data.message ? data.message : 'Неверный никнейм или пароль.');
+        return;
+      }
+
+      try {
+        localStorage.setItem('videoHubCurrentUser', JSON.stringify({ nickname: data.nickname }));
+      } catch (e) {}
+
+      /* Если современный script.js работает, синхронизируем его состояние. */
+      if (typeof currentUser !== 'undefined') {
+        currentUser = { nickname: data.nickname };
+      }
+
+      if (typeof updateAuthState === 'function') {
+        updateAuthState();
+      } else {
+        document.getElementById('authSection').className = 'auth-section hidden';
+        document.getElementById('appSection').className = 'app-section';
+        document.getElementById('userBlock').className = 'user-block';
+        document.getElementById('currentUserLabel').innerHTML = 'Вы вошли как: ' + tvEscape(data.nickname);
+
+        /* На старом ТВ показываем админ-кнопку только админам. */
+        var adminButton = document.getElementById('adminToggleBtn');
+        if (adminButton) {
+          adminButton.className = tvIsAdmin(data.nickname) ? 'admin-btn' : 'admin-btn hidden';
+        }
+      }
+
+      if (typeof loadVideos === 'function') {
+        loadVideos();
+      } else {
+        tvLoadVideos();
+      }
+
+      if (nicknameInput) nicknameInput.value = '';
+      if (passwordInput) passwordInput.value = '';
+      tvMessage('');
+    });
+  }
+
+  function tvLogout() {
+    try {
+      localStorage.removeItem('videoHubCurrentUser');
+    } catch (e) {}
+
+    if (typeof currentUser !== 'undefined') currentUser = null;
+
+    if (typeof updateAuthState === 'function') {
+      updateAuthState();
+      if (typeof renderVideos === 'function') renderVideos();
+    } else {
+      document.getElementById('authSection').className = 'auth-section';
+      document.getElementById('appSection').className = 'app-section hidden';
+      document.getElementById('userBlock').className = 'user-block hidden';
+      var adminButton = document.getElementById('adminToggleBtn');
+      if (adminButton) adminButton.className = 'admin-btn hidden';
+    }
+    tvMessage('Вы вышли из аккаунта.');
+  }
+
+  function tvOpenAdmin() {
+    var modal = document.getElementById('adminModal');
+    if (modal) modal.className = 'modal';
+  }
+
+  function tvCloseAdmin() {
+    var modal = document.getElementById('adminModal');
+    if (modal) modal.className = 'modal hidden';
+  }
+  </script>
+</body>
+</html>
