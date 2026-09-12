@@ -25,7 +25,7 @@
         <section id="authSection" class="auth-section">
           <div class="auth-card">
             <h2>Регистрация</h2>
-            <form id="registerForm" class="auth-form">
+            <form id="registerForm" class="auth-form" action="#" method="post" onsubmit="return false;"></form>
               <label>Никнейм<input type="text" id="registerNickname" name="nickname" placeholder="Введите никнейм" required /></label>
               <label>Пароль<input type="password" id="registerPassword" name="password" placeholder="Введите пароль" required /></label>
               <button type="submit" class="primary-btn">Создать аккаунт</button>
@@ -33,7 +33,7 @@
           </div>
           <div class="auth-card">
             <h2>Вход</h2>
-            <form id="loginForm" class="auth-form">
+           <form id="loginForm" class="auth-form" action="#" method="post" onsubmit="return false;"></form>
               <label>Никнейм<input type="text" id="loginNickname" name="nickname" placeholder="Введите никнейм" required /></label>
               <label>Пароль<input type="password" id="loginPassword" name="password" placeholder="Введите пароль" required /></label>
               <button type="submit" class="primary-btn">Войти</button>
